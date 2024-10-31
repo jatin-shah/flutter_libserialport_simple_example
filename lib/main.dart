@@ -114,31 +114,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         debugPrint('${_serialPort!.name} closed!');
                       } else {
                         if (_serialPort!.open(mode: SerialPortMode.readWrite)) {
-                          SerialPortConfig config = _serialPort!.config;
-                          // https://www.sigrok.org/api/libserialport/0.1.1/a00007.html#gab14927cf0efee73b59d04a572b688fa0
-                          // https://www.sigrok.org/api/libserialport/0.1.1/a00004_source.html
-                          config.baudRate = 115200;
-                          config.parity = 0;
-                          config.bits = 8;
-                          config.cts = 0;
-                          config.rts = 0;
-                          config.stopBits = 1;
-                          config.xonXoff = 0;
-                          _serialPort!.config = config;
-                          if (_serialPort!.isOpen) {
-                            debugPrint('${_serialPort!.name} opened!');
-                          }
-                          final reader = SerialPortReader(_serialPort!);
-                          reader.stream.listen((data) {
-                            debugPrint('received: $data');
-                            receiveDataList.add(data);
-                            setState(() {});
-                          }, onError: (error) {
-                            if (error is SerialPortError) {
-                              debugPrint(
-                                  'error: ${cp949.decodeString(error.message)}, code: ${error.errorCode}');
-                            }
-                          });
+                          setupAndProcessSerialPort();
                         }
                       }
                       setState(() {});
@@ -155,11 +131,11 @@ class _MyHomePageState extends State<MyHomePage> {
                     itemCount: receiveDataList.length,
                     itemBuilder: (context, index) {
                       /*
-                      OUTPUT for raw bytes
-                      return Text(receiveDataList[index].toString());
-                      */
+                      OUTPUT for raw bytes 
+                      return Text(receiveDataList[index].toString()); */
+                      
                       /* output for string */
-                      return Text(String.fromCharCodes(receiveDataList[index]));
+                      return Text(String.fromCharCodes(receiveDataList[index])); 
                     }),
               ),
             ),
@@ -203,5 +179,39 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
       ),
     );
+  }
+
+  void setupAndProcessSerialPort() {
+    SerialPortConfig config = _serialPort!.config;
+    // https://www.sigrok.org/api/libserialport/0.1.1/a00007.html#gab14927cf0efee73b59d04a572b688fa0
+    // https://www.sigrok.org/api/libserialport/0.1.1/a00004_source.html
+    config.baudRate = 57600;
+    config.parity = 0;
+    config.bits = 8;
+    config.cts = 0;
+    config.rts = 0;
+    config.stopBits = 1;
+    config.xonXoff = 0;
+    _serialPort!.config = config;
+
+    if (_serialPort!.isOpen) {
+      debugPrint('${_serialPort!.name} opened!');
+    }
+
+    final reader = SerialPortReader(_serialPort!);
+    processSerialInput(reader);
+  }
+
+  void processSerialInput(SerialPortReader reader) {
+    reader.stream.listen((data) {
+      debugPrint('received: $data');
+      receiveDataList.add(data);
+      setState(() {});
+    }, onError: (error) {
+      if (error is SerialPortError) {
+        debugPrint(
+            'error: ${cp949.decodeString(error.message)}, code: ${error.errorCode}');
+      }
+    });
   }
 }
