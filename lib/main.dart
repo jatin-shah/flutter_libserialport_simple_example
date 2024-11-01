@@ -17,11 +17,11 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Windowns Serial Port Demo',
+      title: 'Tombot Robot Controller',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(title: 'Flutter Windowns Serial Port Demo'),
+      home: const MyHomePage(title: 'Tombot Robot Controller'),
     );
   }
 }
@@ -40,6 +40,7 @@ class _MyHomePageState extends State<MyHomePage> {
   List<Uint8List> receiveDataList = [];
   final textInputCtrl = TextEditingController();
   final ScrollController _controller = ScrollController();
+  bool _scrollEnable = false;
 
   @override
   void initState() {
@@ -109,6 +110,18 @@ class _MyHomePageState extends State<MyHomePage> {
                     child: Text(openButtonText),
                     onPressed: setupSerialPort,
                   ),
+                  const SizedBox(
+                    width: 50.0,
+                  ),
+                  const Text('Enable Scrolling: '),
+                  Checkbox(value: _scrollEnable, onChanged: changeScrollSetting),
+                  const SizedBox(
+                    width: 50.0,
+                  ),
+                  OutlinedButton(
+                    child: const Text('Clear'),
+                    onPressed: clearWindow,
+                  ),
                 ],
               ),
             ),
@@ -120,15 +133,17 @@ class _MyHomePageState extends State<MyHomePage> {
                     controller: _controller,
                     itemCount: receiveDataList.length,
                     itemBuilder: (context, index) {
+                      if (!_scrollEnable) {
                       _controller.animateTo(_controller.position.maxScrollExtent,
                                             curve:Curves.easeOut,
                                             duration: const Duration(milliseconds: 100),);
+                      }
                       /*
                       OUTPUT for raw bytes 
                       return Text(receiveDataList[index].toString()); */
                       
                       /* output for string */
-                      return Text(String.fromCharCodes(receiveDataList[index])); 
+                      return Text(String.fromCharCodes(receiveDataList[index]).replaceAll('\n', '')); 
                     },),
               ),
             ),
@@ -211,6 +226,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void sendSerialOutput() {
     var data = textInputCtrl.text;
+    data += '\n';
     SerialPort port = _serialPort!;
     if (port != null && port.isOpen) {
       var writeLen = port.write(Uint8List.fromList(data.codeUnits));
@@ -221,5 +237,13 @@ class _MyHomePageState extends State<MyHomePage> {
         });
       }
     }
+  }
+
+  void changeScrollSetting(bool? newValue) {
+    _scrollEnable = newValue as bool;
+  }
+
+  void clearWindow() {
+
   }
 }
