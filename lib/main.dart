@@ -39,7 +39,7 @@ class _MyHomePageState extends State<MyHomePage> {
   SerialPort? _serialPort;
   List<Uint8List> receiveDataList = [];
   final textInputCtrl = TextEditingController();
-  final ScrollController _controller = ScrollController();
+  final ScrollController logWindowController = ScrollController();
   bool _scrollEnable = false;
 
   @override
@@ -130,11 +130,11 @@ class _MyHomePageState extends State<MyHomePage> {
               child: Card(
                 margin: const EdgeInsets.all(10.0),
                 child: ListView.builder(
-                    controller: _controller,
+                    controller: logWindowController,
                     itemCount: receiveDataList.length,
                     itemBuilder: (context, index) {
                       if (!_scrollEnable) {
-                      _controller.animateTo(_controller.position.maxScrollExtent,
+                      logWindowController.animateTo(logWindowController.position.maxScrollExtent,
                                             curve:Curves.easeOut,
                                             duration: const Duration(milliseconds: 100),);
                       }
@@ -154,6 +154,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 10.0),
                     child: TextField(
+                      onSubmitted: processCmdCompletion,
                       enabled: (_serialPort != null && _serialPort!.isOpen)
                           ? true
                           : false,
@@ -226,7 +227,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void sendSerialOutput() {
     var data = textInputCtrl.text;
-    data += '\n';
+    if (!data.contains('\n')) {
+      data += '\n';
+    }
     SerialPort port = _serialPort!;
     if (port != null && port.isOpen) {
       var writeLen = port.write(Uint8List.fromList(data.codeUnits));
@@ -244,6 +247,11 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void clearWindow() {
+    receiveDataList.clear();
+  }
 
+  void processCmdCompletion(text) {
+    // debugPrint(text);
+    sendSerialOutput();
   }
 }
