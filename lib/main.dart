@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_libserialport/flutter_libserialport.dart';
 import 'package:cp949/cp949.dart' as cp949;
 
@@ -38,6 +39,7 @@ class _MyHomePageState extends State<MyHomePage> {
   SerialPort? _serialPort;
   List<Uint8List> receiveDataList = [];
   final textInputCtrl = TextEditingController();
+  final ScrollController _controller = ScrollController();
 
   @override
   void initState() {
@@ -105,20 +107,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                   OutlinedButton(
                     child: Text(openButtonText),
-                    onPressed: () {
-                      if (_serialPort == null) {
-                        return;
-                      }
-                      if (_serialPort!.isOpen) {
-                        _serialPort!.close();
-                        debugPrint('${_serialPort!.name} closed!');
-                      } else {
-                        if (_serialPort!.open(mode: SerialPortMode.readWrite)) {
-                          setupAndProcessSerialPort();
-                        }
-                      }
-                      setState(() {});
-                    },
+                    onPressed: setupSerialPort,
                   ),
                 ],
               ),
@@ -128,15 +117,19 @@ class _MyHomePageState extends State<MyHomePage> {
               child: Card(
                 margin: const EdgeInsets.all(10.0),
                 child: ListView.builder(
+                    controller: _controller,
                     itemCount: receiveDataList.length,
                     itemBuilder: (context, index) {
+                      _controller.animateTo(_controller.position.maxScrollExtent,
+                                            curve:Curves.easeOut,
+                                            duration: const Duration(milliseconds: 100),);
                       /*
                       OUTPUT for raw bytes 
                       return Text(receiveDataList[index].toString()); */
                       
                       /* output for string */
                       return Text(String.fromCharCodes(receiveDataList[index])); 
-                    }),
+                    },),
               ),
             ),
             Row(
@@ -158,17 +151,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
                 Flexible(
                   child: TextButton.icon(
-                    onPressed: (_serialPort != null && _serialPort!.isOpen)
-                        ? () {
-                            if (_serialPort!.write(Uint8List.fromList(
-                                    textInputCtrl.text.codeUnits)) ==
-                                textInputCtrl.text.codeUnits.length) {
-                              setState(() {
-                                textInputCtrl.text = '';
-                              });
-                            }
-                          }
-                        : null,
+                    onPressed: sendSerialOutput,
                     icon: const Icon(Icons.send),
                     label: const Text("Send"),
                   ),
@@ -181,30 +164,41 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  void setupAndProcessSerialPort() {
-    SerialPortConfig config = _serialPort!.config;
-    // https://www.sigrok.org/api/libserialport/0.1.1/a00007.html#gab14927cf0efee73b59d04a572b688fa0
-    // https://www.sigrok.org/api/libserialport/0.1.1/a00004_source.html
-    config.baudRate = 57600;
-    config.parity = 0;
-    config.bits = 8;
-    config.cts = 0;
-    config.rts = 0;
-    config.stopBits = 1;
-    config.xonXoff = 0;
-    _serialPort!.config = config;
-
-    if (_serialPort!.isOpen) {
-      debugPrint('${_serialPort!.name} opened!');
+  void setupSerialPort() {
+    if (_serialPort == null) {
+      return;
     }
+    if (_serialPort!.isOpen) {
+      _serialPort!.close();
+      debugPrint('${_serialPort!.name} closed!');
+    } else {
+      if (_serialPort!.open(mode: SerialPortMode.readWrite)) {
+        SerialPortConfig config = _serialPort!.config;
+        // https://www.sigrok.org/api/libserialport/0.1.1/a00007.html#gab14927cf0efee73b59d04a572b688fa0
+        // https://www.sigrok.org/api/libserialport/0.1.1/a00004_source.html
+        config.baudRate = 57600;
+        config.parity = 0;
+        config.bits = 8;
+        config.cts = 0;
+        config.rts = 0;
+        config.stopBits = 1;
+        config.xonXoff = 0;
+        _serialPort!.config = config;
 
-    final reader = SerialPortReader(_serialPort!);
-    processSerialInput(reader);
+        if (_serialPort!.isOpen) {
+          debugPrint('${_serialPort!.name} opened!');
+        }
+
+        final reader = SerialPortReader(_serialPort!);
+        processSerialInput(reader);
+      }
+    }
+    setState(() {});
   }
 
   void processSerialInput(SerialPortReader reader) {
     reader.stream.listen((data) {
-      debugPrint('received: $data');
+      // debugPrint('received: $data');
       receiveDataList.add(data);
       setState(() {});
     }, onError: (error) {
@@ -213,5 +207,19 @@ class _MyHomePageState extends State<MyHomePage> {
             'error: ${cp949.decodeString(error.message)}, code: ${error.errorCode}');
       }
     });
+  }
+
+  void sendSerialOutput() {
+    var data = textInputCtrl.text;
+    SerialPort port = _serialPort!;
+    if (port != null && port.isOpen) {
+      var writeLen = port.write(Uint8List.fromList(data.codeUnits));
+      debugPrint('Wrote: $data, Bytes sent: $writeLen');
+      if (writeLen == data.length) {
+        setState(() {
+          textInputCtrl.text = '';
+        });
+      }
+    }
   }
 }
