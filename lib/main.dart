@@ -193,7 +193,7 @@ class _MyHomePageState extends State<MyHomePage> {
         SerialPortConfig config = _serialPort!.config;
         // https://www.sigrok.org/api/libserialport/0.1.1/a00007.html#gab14927cf0efee73b59d04a572b688fa0
         // https://www.sigrok.org/api/libserialport/0.1.1/a00004_source.html
-        config.baudRate = 57600;
+        config.baudRate = 115200;
         config.parity = 0;
         config.bits = 8;
         config.cts = 0;
